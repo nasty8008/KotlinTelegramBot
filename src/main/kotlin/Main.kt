@@ -10,8 +10,43 @@ data class Word(
 
 fun main() {
     val wordsFile = File("words.txt")
+    val dictionary = loadDictionary(wordsFile)
+    val totalCount = dictionary.size
+    val learnedCount = dictionary.count { word ->
+        word.correctAnswersCount >= 3
+    }
+    val percent = 100 * learnedCount / totalCount
+
+    while (true) {
+        println("Меню: \n" +
+                "1 – Учить слова\n" +
+                "2 – Статистика\n" +
+                "0 – Выход")
+        print("Введите номер пункта меню: ")
+        val choice: Int? = readln().toIntOrNull()
+        when (choice) {
+            0 -> {
+                println("Выходим из программы...")
+                return
+            }
+            1 -> println("Выбран пункт \"Учить слова\"")
+            2 -> {
+                println("Выбран пункт \"Статистика\"")
+                println("""
+                    Всего слов в словаре: $totalCount
+                    Выучено слов: $learnedCount
+                    Выучено $learnedCount из $totalCount слов | $percent%
+                    
+                """.trimIndent())
+            }
+            else -> println("Введите число 1, 2 или 0")
+        }
+    }
+}
+
+fun loadDictionary(file: File): MutableList<Word> {
     val dictionary = mutableListOf<Word>()
-    wordsFile.readLines().forEach { line: String ->
+    file.readLines().forEach { line: String ->
         val parts = line.split("|")
         val word = Word(
             original = parts[0],
@@ -20,7 +55,5 @@ fun main() {
         )
         dictionary.add(word)
     }
-    dictionary.forEach { word ->
-        println(word)
-    }
+    return dictionary
 }
