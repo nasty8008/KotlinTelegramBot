@@ -11,11 +11,9 @@ data class Word(
 fun main() {
     val wordsFile = File("words.txt")
     val dictionary = loadDictionary(wordsFile)
-    val totalCount = dictionary.size
-    val learnedCount = dictionary.count { word ->
-        word.correctAnswersCount >= 3
-    }
-    val percent = 100 * learnedCount / totalCount
+    val totalCount: Int = dictionary.size
+    val learnedCount = dictionary.filter {it.correctAnswersCount >= 3}.size
+    val percent = if (totalCount == 0) "Словарь пуст!" else "${100 * learnedCount / totalCount}%"
 
     while (true) {
         println("Меню: \n" +
@@ -35,7 +33,7 @@ fun main() {
                 println("""
                     Всего слов в словаре: $totalCount
                     Выучено слов: $learnedCount
-                    Выучено $learnedCount из $totalCount слов | $percent%
+                    Выучено $learnedCount из $totalCount слов | $percent
                     
                 """.trimIndent())
             }
