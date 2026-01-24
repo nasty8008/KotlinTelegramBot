@@ -31,18 +31,21 @@ fun main() {
                 println("Выбран пункт \"Учить слова\"")
 
                 val notLearnedList = dictionary.filter { it.correctAnswersCount < 3}
-                val questionWords = notLearnedList.shuffled().take(4)
+                val questionWords: List<Word> = if (notLearnedList.size < 4) {
+                    notLearnedList.shuffled().take(minOf(4, notLearnedList.size))
+                } else {
+                    notLearnedList.shuffled().take(4)
+                }
                 val correctAnswer = questionWords.random()
 
-                if (notLearnedList.isEmpty()) {
-                    println("Все слова в словаре выучены!")
-                } else {
+                while (notLearnedList.isNotEmpty()) {
                     println("${correctAnswer.original}:")
-                    questionWords.forEach { word ->
-                        println(" ${questionWords.indexOf(word)+1} - ${word.translation}")
+                    questionWords.forEachIndexed { index, word ->
+                        println(" ${index+1} - ${word.translation}")
                     }
                     readln()
                 }
+                println("Все слова в словаре выучены!")
             }
             2 -> {
                 println("Выбран пункт \"Статистика\"")
