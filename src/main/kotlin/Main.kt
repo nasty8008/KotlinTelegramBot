@@ -31,14 +31,15 @@ fun main() {
                 println("Выбран пункт \"Учить слова\"")
 
                 val notLearnedList = dictionary.filter { it.correctAnswersCount < 3}
-                val questionWords: List<Word> = if (notLearnedList.size < 4) {
-                    notLearnedList.shuffled().take(minOf(4, notLearnedList.size))
-                } else {
-                    notLearnedList.shuffled().take(4)
-                }
-                val correctAnswer = questionWords.random()
 
                 while (notLearnedList.isNotEmpty()) {
+                    val questionWords: List<Word> = if (notLearnedList.size < 4) {
+                        notLearnedList.shuffled().take(minOf(4, notLearnedList.size))
+                    } else {
+                        notLearnedList.shuffled().take(4)
+                    }
+                    val correctAnswer = questionWords.random()
+
                     println("${correctAnswer.original}:")
                     questionWords.forEachIndexed { index, word ->
                         println(" ${index+1} - ${word.translation}")
