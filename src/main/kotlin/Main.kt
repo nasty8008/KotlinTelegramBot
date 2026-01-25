@@ -44,7 +44,32 @@ fun main() {
                     questionWords.forEachIndexed { index, word ->
                         println(" ${index+1} - ${word.translation}")
                     }
-                    readln()
+                    println(" ----------\n" +
+                            " 0 - Меню")
+                    print("Введите число от 0 до ${questionWords.size}: ")
+                    val userAnswerInput = readln().toIntOrNull()
+                    val correctAnswerId = questionWords.indexOf(correctAnswer)
+
+                    when (userAnswerInput) {
+                        null -> println("Пожалуйста, введите число.")
+                        0 -> break
+                        in 1..questionWords.size -> if (userAnswerInput == correctAnswerId + 1) {
+                            println("Правильно!")
+                            dictionary[dictionary.indexOf(correctAnswer)].correctAnswersCount++
+
+                            fun saveDictionary(dictionary: MutableList<Word>) {
+                                wordsFile.writeText("")
+                                dictionary.forEach {
+                                    wordsFile.appendText("${it.original}|${it.translation}|${it.correctAnswersCount}\n")
+                                }
+                            }
+
+                            saveDictionary(dictionary)
+                        } else {
+                            println("Неправильно! ${correctAnswer.original} - это ${correctAnswer.translation}")
+                        }
+                        else -> continue
+                    }
                 }
                 println("Все слова в словаре выучены!")
             }
