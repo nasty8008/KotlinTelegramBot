@@ -27,7 +27,27 @@ fun main() {
                 println("Выходим из программы...")
                 return
             }
-            1 -> println("Выбран пункт \"Учить слова\"")
+            1 -> {
+                println("Выбран пункт \"Учить слова\"")
+
+                val notLearnedList = dictionary.filter { it.correctAnswersCount < 3}
+
+                while (notLearnedList.isNotEmpty()) {
+                    val questionWords: List<Word> = if (notLearnedList.size < 4) {
+                        notLearnedList.shuffled().take(minOf(4, notLearnedList.size))
+                    } else {
+                        notLearnedList.shuffled().take(4)
+                    }
+                    val correctAnswer = questionWords.random()
+
+                    println("${correctAnswer.original}:")
+                    questionWords.forEachIndexed { index, word ->
+                        println(" ${index+1} - ${word.translation}")
+                    }
+                    readln()
+                }
+                println("Все слова в словаре выучены!")
+            }
             2 -> {
                 println("Выбран пункт \"Статистика\"")
                 println("""
