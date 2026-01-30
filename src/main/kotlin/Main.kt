@@ -1,8 +1,5 @@
 package org.example
 
-const val CORRECT_ANSWERS = 3
-const val MAX_OPTIONS = 4
-
 data class Word(
     val original: String,
     val translation: String,
@@ -18,7 +15,12 @@ fun Question.asConsoleString(): String {
 
 fun main() {
 
-    val trainer = LearnWordsTrainer()
+    val trainer = try {
+        LearnWordsTrainer()
+    } catch (e: Exception) {
+        println("Невозможно загрузить файл")
+        return
+    }
 
     while (true) {
         println(
@@ -46,7 +48,7 @@ fun main() {
                             null -> println("Пожалуйста, введите число.")
                             0 -> break
                             in 1..question.variants.size -> if (trainer.checkAnswer(userAnswerInput.minus(1))) {
-                                println("Правильно")
+                                println("Правильно!")
                             } else {
                                 println("Неправильно! ${question.correctAnswer.original} - это ${question.correctAnswer.translation}")
                             }
