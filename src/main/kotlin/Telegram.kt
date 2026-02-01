@@ -10,18 +10,26 @@ const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
 fun main(args: Array<String>) {
 
     val botToken = args[0]
-    val urlGetMe = "$TELEGRAM_BASE_URL$botToken/getMe"
-    val urlGetUpdates = "$TELEGRAM_BASE_URL$botToken/getUpdates"
+    var updateId = 0
 
+    while (true) {
+        Thread.sleep(2000)
+        val updates = getUpdates(botToken, updateId)
+
+        val startUpdateId = updates.lastIndexOf("update_id") + 11
+        val endUpdateId = updates.lastIndexOf(",\n\"message\"")
+        if (startUpdateId == -1 || endUpdateId == -1) continue
+        val updateIdString = updates.substring(startUpdateId, endUpdateId)
+        println(updates)
+        updateId = updateIdString.toInt() + 1
+    }
+}
+
+fun getUpdates(botToken: String, updateId: Int): String {
+    val urlGetUpdates = "$TELEGRAM_BASE_URL$botToken/getUpdates?offset=$updateId"
     val client: HttpClient = HttpClient.newBuilder().build()
-
-    val requestGetMe: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlGetMe)).build()
     val requestGetUpdates: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlGetUpdates)).build()
-
-    val responseGetMe: HttpResponse<String> = client.send(requestGetMe, HttpResponse.BodyHandlers.ofString())
     val responseGetUpdates: HttpResponse<String> = client.send(requestGetUpdates, HttpResponse.BodyHandlers.ofString())
 
-    println(responseGetMe.body())
-    println()
-    println(responseGetUpdates.body())
+    return responseGetUpdates.body()
 }
