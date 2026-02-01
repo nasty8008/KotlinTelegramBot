@@ -5,11 +5,13 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
+const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
+
 fun main(args: Array<String>) {
 
     val botToken = args[0]
-    val urlGetMe = "https://api.telegram.org/bot$botToken/getMe"
-    val urlGetUpdates = "https://api.telegram.org/bot$botToken/getUpdates"
+    val urlGetMe = "$TELEGRAM_BASE_URL$botToken/getMe"
+    val urlGetUpdates = "$TELEGRAM_BASE_URL$botToken/getUpdates"
 
     val client: HttpClient = HttpClient.newBuilder().build()
 
