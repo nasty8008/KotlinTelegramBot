@@ -6,6 +6,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
+const val OFFSET_FOR_UPDATE_ID = 11
 
 fun main(args: Array<String>) {
 
@@ -16,10 +17,10 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val updates = getUpdates(botToken, updateId)
 
-        val startUpdateId = updates.lastIndexOf("update_id") + 11
-        val endUpdateId = updates.lastIndexOf(",\n\"message\"")
+        val startUpdateId = updates.indexOf("update_id")
+        val endUpdateId = updates.indexOf(",\n\"message\"")
         if (startUpdateId == -1 || endUpdateId == -1) continue
-        val updateIdString = updates.substring(startUpdateId, endUpdateId)
+        val updateIdString = updates.substring(startUpdateId + OFFSET_FOR_UPDATE_ID, endUpdateId)
         println(updates)
         updateId = updateIdString.toInt() + 1
     }
