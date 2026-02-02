@@ -6,7 +6,6 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
-const val OFFSET_FOR_UPDATE_ID = 11
 
 fun main(args: Array<String>) {
 
@@ -17,16 +16,14 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val updates = getUpdates(botToken, updateId)
 
-        val startUpdateId = updates.indexOf("update_id")
-        val endUpdateId = updates.indexOf(",\n\"message\"")
-        if (startUpdateId == -1 || endUpdateId == -1) continue
-        val updateIdString = updates.substring(startUpdateId + OFFSET_FOR_UPDATE_ID, endUpdateId)
+        val updateIdRegex: Regex = "\"update_id\":(.+?),".toRegex()
+        val updateIdMatchResult: MatchResult = updateIdRegex.find(updates) ?: continue
+        updateId = updateIdMatchResult.groups[1]?.value!!.toInt() + 1
         println(updates)
-        updateId = updateIdString.toInt() + 1
 
         val messageTextRegex: Regex = "\"text\":\"(.+?)\"".toRegex()
-        val matchResult: MatchResult? = messageTextRegex.find(updates)
-        val groups = matchResult?.groups
+        val messageTextMatchResult: MatchResult? = messageTextRegex.find(updates)
+        val groups = messageTextMatchResult?.groups
         val text = groups?.get(1)?.value
         println(text)
     }
