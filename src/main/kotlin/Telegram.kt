@@ -23,13 +23,14 @@ fun main(args: Array<String>) {
         updateId = updateIdMatchResult.groups[1]?.value?.toInt()?.plus(1) ?: continue
         println(updates)
 
-        val chatIdMatchResult: MatchResult = chatIdRegex.find(updates) ?: continue
-        println(chatIdMatchResult.groups[1]?.value?.toInt())
-
         val messageTextMatchResult: MatchResult? = messageTextRegex.find(updates)
         val groups = messageTextMatchResult?.groups
         val text = groups?.get(1)?.value
         println(text)
+
+        val chatIdMatchResult: MatchResult = chatIdRegex.find(updates) ?: continue
+        val chatId = chatIdMatchResult.groups[1]?.value?.toInt() ?: continue
+        sendMessage(botToken, chatId, text.toString())
     }
 }
 
