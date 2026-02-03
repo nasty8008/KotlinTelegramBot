@@ -41,3 +41,12 @@ fun getUpdates(botToken: String, updateId: Int): String {
 
     return responseGetUpdates.body()
 }
+
+fun sendMessage(botToken: String, chatId: Int, text: String): String {
+    val urlSendMessage = "$TELEGRAM_BASE_URL$botToken/sendMessage?chat_id=$chatId&text=$text"
+    val client: HttpClient = HttpClient.newBuilder().build()
+    val requestSendMessage: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlSendMessage)).build()
+    val responseSendMessage: HttpResponse<String> = client.send(requestSendMessage, HttpResponse.BodyHandlers.ofString())
+
+    return responseSendMessage.body()
+}
