@@ -11,8 +11,9 @@ fun main(args: Array<String>) {
 
     val botToken = args[0]
     var updateId = 0
-    val updateIdRegex: Regex = "\"update_id\":(\\d+),".toRegex()
-    val messageTextRegex: Regex = "\"text\":\"(.+?)\"".toRegex()
+    val updateIdRegex: Regex = "\"update_id\":\\s?(\\d+)".toRegex()
+    val messageTextRegex: Regex = "\"text\":\\s?\"(.+?)\"".toRegex()
+    val chatIdRegex: Regex = "\"chat\":\\{\"id\":\\s?(\\d+)".toRegex()
 
     while (true) {
         Thread.sleep(2000)
@@ -21,6 +22,9 @@ fun main(args: Array<String>) {
         val updateIdMatchResult: MatchResult = updateIdRegex.find(updates) ?: continue
         updateId = updateIdMatchResult.groups[1]?.value?.toInt()?.plus(1) ?: continue
         println(updates)
+
+        val chatIdMatchResult: MatchResult = chatIdRegex.find(updates) ?: continue
+        println(chatIdMatchResult.groups[1]?.value?.toInt())
 
         val messageTextMatchResult: MatchResult? = messageTextRegex.find(updates)
         val groups = messageTextMatchResult?.groups
