@@ -43,11 +43,11 @@ class TelegramBotService {
             			[
             				{
             					"text": "Изучить слова",
-            					"callback_data": "data1"
+            					"callback_data": "learn_words_clicked"
             				},
             				{
             					"text": "Статистика",
-            					"callback_data": "data2"
+            					"callback_data": "statistics_clicked"
             				}
             			]
             		]
@@ -76,6 +76,7 @@ fun main(args: Array<String>) {
     val updateIdRegex: Regex = "\"update_id\":\\s?(\\d+)".toRegex()
     val messageTextRegex: Regex = "\"text\":\\s?\"(.+?)\"".toRegex()
     val chatIdRegex: Regex = "\"chat\":\\{\"id\":\\s?(\\d+)".toRegex()
+    val dataRegex: Regex = "\"data\":\\s?\"(.+?)\"".toRegex()
 
     while (true) {
         Thread.sleep(2000)
@@ -84,13 +85,17 @@ fun main(args: Array<String>) {
         updateId = updateIdRegex.find(updates)?.groups[1]?.value?.toInt()?.plus(1) ?: continue
         println(updates)
 
-        val message = messageTextRegex.find(updates)?.groups?.get(1)?.value ?: continue
+        val message = messageTextRegex.find(updates)?.groups[1]?.value ?: continue
         println(message)
 
         val chatId = chatIdRegex.find(updates)?.groups[1]?.value?.toInt() ?: continue
+        val data = dataRegex.find(updates)?.groups[1]?.value
 
-        if (message.lowercase() == "/start") {
-            println(botService.sendMenu(botToken, chatId))
+        if (message  == "/start") {
+            botService.sendMenu(botToken, chatId)
+        }
+        if (data?.lowercase() == "statistics_clicked") {
+            botService.sendMessage(botToken, chatId, "Выучено 10 из 10 слов | 100%")
         }
     }
 }
