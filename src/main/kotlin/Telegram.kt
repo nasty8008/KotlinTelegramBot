@@ -5,6 +5,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
 
@@ -20,9 +21,44 @@ class TelegramBotService {
     }
 
     fun sendMessage(botToken: String, chatId: Int, text: String): String {
-        val encodedText = URLEncoder.encode(text, "UTF-8")
+        val encodedText = URLEncoder.encode(
+            text,
+            StandardCharsets.UTF_8)
+        println(encodedText)
         val urlSendMessage = "$TELEGRAM_BASE_URL$botToken/sendMessage?chat_id=$chatId&text=$encodedText"
         val requestSendMessage: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlSendMessage)).build()
+        val responseSendMessage: HttpResponse<String> = client.send(requestSendMessage, HttpResponse.BodyHandlers.ofString())
+
+        return responseSendMessage.body()
+    }
+
+    fun sendMenu(botToken: String, chatId: Int): String {
+        val urlSendMessage = "$TELEGRAM_BASE_URL$botToken/sendMessage"
+        val sendMenuBody = """
+            {
+            	"chat_id": $chatId,
+            	"text": "Основное меню",
+            	"reply_markup": {
+            		"inline_keyboard": [
+            			[
+            				{
+            					"text": "Изучить слова",
+            					"callback_data": "data1"
+            				},
+            				{
+            					"text": "Статистика",
+            					"callback_data": "data2"
+            				}
+            			]
+            		]
+            	}
+            }
+        """.trimIndent()
+
+        val requestSendMessage: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlSendMessage))
+            .header("Content-type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(sendMenuBody))
+            .build()
         val responseSendMessage: HttpResponse<String> = client.send(requestSendMessage, HttpResponse.BodyHandlers.ofString())
 
         return responseSendMessage.body()
@@ -43,17 +79,16 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val updates = botService.getUpdates(botToken, updateId)
 
-        val updateIdMatchResult: MatchResult = updateIdRegex.find(updates) ?: continue
-        updateId = updateIdMatchResult.groups[1]?.value?.toInt()?.plus(1) ?: continue
+        updateId = updateIdRegex.find(updates)?.groups[1]?.value?.toInt()?.plus(1) ?: continue
         println(updates)
 
-        val messageTextMatchResult: MatchResult? = messageTextRegex.find(updates)
-        val groups = messageTextMatchResult?.groups
-        val text = groups?.get(1)?.value
-        println(text)
+        val message = messageTextRegex.find(updates)?.groups?.get(1)?.value ?: continue
+        println(message)
 
-        val chatIdMatchResult: MatchResult = chatIdRegex.find(updates) ?: continue
-        val chatId = chatIdMatchResult.groups[1]?.value?.toInt() ?: continue
-        botService.sendMessage(botToken, chatId, text ?: continue)
+        val chatId = chatIdRegex.find(updates)?.groups[1]?.value?.toInt() ?: continue
+
+        if (message.lowercase() == "/start") {
+            println(botService.sendMenu(botToken, chatId))
+        }
     }
 }
