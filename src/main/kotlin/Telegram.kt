@@ -8,6 +8,8 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
+const val CALLBACK_LEARN_WORDS = "learn_words_clicked"
+const val CALLBACK_STATISTICS = "statistics_clicked"
 
 class TelegramBotService {
     val client: HttpClient = HttpClient.newBuilder().build()
@@ -43,11 +45,11 @@ class TelegramBotService {
             			[
             				{
             					"text": "Изучить слова",
-            					"callback_data": "learn_words_clicked"
+            					"callback_data": "$CALLBACK_LEARN_WORDS"
             				},
             				{
             					"text": "Статистика",
-            					"callback_data": "statistics_clicked"
+            					"callback_data": "$CALLBACK_STATISTICS"
             				}
             			]
             		]
@@ -94,7 +96,7 @@ fun main(args: Array<String>) {
         if (message  == "/start") {
             botService.sendMenu(botToken, chatId)
         }
-        if (data?.lowercase() == "statistics_clicked") {
+        if (data == CALLBACK_STATISTICS) {
             botService.sendMessage(botToken, chatId, "Выучено 10 из 10 слов | 100%")
         }
     }
