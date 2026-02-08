@@ -69,11 +69,13 @@ fun main(args: Array<String>) {
 
     val botToken = args[0]
     var updateId = 0
+
     val botService = TelegramBotService()
+    val trainer = LearnWordsTrainer()
+
     val updateIdRegex: Regex = "\"update_id\":\\s?(\\d+)".toRegex()
     val messageTextRegex: Regex = "\"text\":\\s?\"(.+?)\"".toRegex()
     val chatIdRegex: Regex = "\"chat\":\\{\"id\":\\s?(\\d+)".toRegex()
-
 
     while (true) {
         Thread.sleep(2000)
