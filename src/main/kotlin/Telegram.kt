@@ -24,7 +24,7 @@ class TelegramBotService(private val botToken: String) {
         return responseGetUpdates.body()
     }
 
-    fun sendMessage(chatId: Int, text: String): String {
+    fun sendMessage(chatId: Long, text: String): String {
         val encodedText = URLEncoder.encode(
             text,
             StandardCharsets.UTF_8
@@ -38,7 +38,7 @@ class TelegramBotService(private val botToken: String) {
         return responseSendMessage.body()
     }
 
-    fun sendMenu(chatId: Int): String {
+    fun sendMenu(chatId: Long): String {
         val urlSendMessage = "$TELEGRAM_BASE_URL$botToken/sendMessage"
         val sendMenuBody = """
             {
@@ -71,7 +71,7 @@ class TelegramBotService(private val botToken: String) {
         return responseSendMessage.body()
     }
 
-    fun sendQuestion(chatId: Int, question: Question): String {
+    fun sendQuestion(chatId: Long, question: Question): String {
         val urlSendMessage = "$TELEGRAM_BASE_URL$botToken/sendMessage"
         val variants = question.variants.mapIndexed { index, word ->
             """ {
@@ -115,7 +115,7 @@ fun main(args: Array<String>) {
 
     val updateIdRegex: Regex = "\"update_id\":\\s?(\\d+)".toRegex()
     val messageTextRegex: Regex = "\"text\":\\s?\"(.+?)\"".toRegex()
-    val chatIdRegex: Regex = "\"chat\":\\{\"id\":\\s?(\\d+)".toRegex()
+    val chatIdRegex: Regex = "\"chat\":\\{\"id\":\\s?(-*\\d+)".toRegex()
     val dataRegex: Regex = "\"data\":\\s?\"(.+?)\"".toRegex()
 
     while (true) {
@@ -128,7 +128,7 @@ fun main(args: Array<String>) {
         val message = messageTextRegex.find(updates)?.groups[1]?.value ?: continue
         println(message)
 
-        val chatId = chatIdRegex.find(updates)?.groups[1]?.value?.toInt() ?: continue
+        val chatId = chatIdRegex.find(updates)?.groups[1]?.value?.toLong() ?: continue
         val data = dataRegex.find(updates)?.groups[1]?.value
 
         if (message == "/start") {
@@ -165,7 +165,7 @@ fun main(args: Array<String>) {
 fun checkNextQuestionAndSend(
     trainer: LearnWordsTrainer,
     telegramBotService: TelegramBotService,
-    chatId: Int
+    chatId: Long
 ) {
     val question = trainer.getNextQuestion()
     if (question == null) {
