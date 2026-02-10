@@ -194,7 +194,7 @@ fun main(args: Array<String>) {
         lastUpdateId = updateId + 1
 
         val message = firstUpdate.message?.text
-        val chatId: Long = (firstUpdate.message?.chat?.id ?: firstUpdate.callbackQuery?.message?.chat?.id)!!
+        val chatId: Long = firstUpdate.message?.chat?.id ?: firstUpdate.callbackQuery?.message?.chat?.id ?: continue
         val data = firstUpdate.callbackQuery?.data
 
         if (message == "/start") {
