@@ -11,6 +11,7 @@ import kotlinx.serialization.json.Json
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
 const val CALLBACK_LEARN_WORDS = "learn_words_clicked"
 const val CALLBACK_STATISTICS = "statistics_clicked"
+const val CALLBACK_RESET_PROGRESS = "reset_progress_clicked"
 const val CALLBACK_DATA_ANSWER_PREFIX = "answer_"
 
 @Serializable
@@ -114,16 +115,15 @@ class TelegramBotService(private val botToken: String) {
             chatId = chatId,
             text = "Основное меню",
             replyMarkup = ReplyMarkup(
-                inlineKeyboard = listOf(listOf(
-                    InlineKeyboard(
-                        text = "Изучить слова",
-                        callbackData = CALLBACK_LEARN_WORDS
+                inlineKeyboard = listOf(
+                    listOf(
+                        InlineKeyboard(text = "Изучить слова", callbackData = CALLBACK_LEARN_WORDS),
+                        InlineKeyboard(text = "Статистика", callbackData = CALLBACK_STATISTICS)
                     ),
-                    InlineKeyboard(
-                        text = "Статистика",
-                        callbackData = CALLBACK_STATISTICS
+                    listOf(
+                        InlineKeyboard(text = "Сбросить статистику", callbackData = CALLBACK_RESET_PROGRESS)
                     )
-                ))
+                )
             )
         )
 
@@ -146,13 +146,14 @@ class TelegramBotService(private val botToken: String) {
             chatId = chatId,
             text = question.correctAnswer.original,
             replyMarkup = ReplyMarkup(
-                listOf(question.variants
-                    .mapIndexed { index, word ->
-                        InlineKeyboard(
-                            text = word.translation,
-                            callbackData = "$CALLBACK_DATA_ANSWER_PREFIX$index"
-                        )
-                    }
+                listOf(
+                    question.variants
+                        .mapIndexed { index, word ->
+                            InlineKeyboard(
+                                text = word.translation,
+                                callbackData = "$CALLBACK_DATA_ANSWER_PREFIX$index"
+                            )
+                        }
                 )
             )
         )
@@ -176,7 +177,7 @@ fun main(args: Array<String>) {
     var lastUpdateId = 0L
 
     val botService = TelegramBotService(botToken)
-    val trainer = LearnWordsTrainer()
+    val trainers = HashMap<Long, LearnWordsTrainer>()
 
     val json = Json {
         ignoreUnknownKeys = true
@@ -188,45 +189,63 @@ fun main(args: Array<String>) {
         println(responseString)
 
         val response: Response = json.decodeFromString(responseString)
-        val updates = response.result
-        val firstUpdate = updates.firstOrNull() ?: continue
-        val updateId = firstUpdate.updateId
-        lastUpdateId = updateId + 1
+        if (response.result.isEmpty()) continue
+        val sortedUpdates = response.result.sortedBy { it.updateId }
+        sortedUpdates.forEach { handleUpdate(it, json, botService, trainers) }
+        lastUpdateId = sortedUpdates.last().updateId + 1
+    }
+}
 
-        val message = firstUpdate.message?.text
-        val chatId: Long = firstUpdate.message?.chat?.id ?: firstUpdate.callbackQuery?.message?.chat?.id ?: continue
-        val data = firstUpdate.callbackQuery?.data
+fun handleUpdate(
+    update: Update,
+    json: Json,
+    botService: TelegramBotService,
+    trainers: HashMap<Long, LearnWordsTrainer>
+) {
 
-        if (message == "/start") {
-            botService.sendMenu(json, chatId)
-        }
-        if (data == CALLBACK_STATISTICS) {
-            val statistics = trainer.getStatistics()
-            val statText = """
+    val message = update.message?.text
+    val chatId = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
+    val data = update.callbackQuery?.data
+
+    val trainer = trainers.getOrPut(chatId) { LearnWordsTrainer("$chatId.txt") }
+
+    if (message == "/start") {
+        botService.sendMenu(json, chatId)
+    }
+
+    if (data == CALLBACK_STATISTICS) {
+        val statistics = trainer.getStatistics()
+        val statText = """
                 Всего слов в словаре: ${statistics.totalCount}
                 Выучено слов: ${statistics.learnedCount}
                 Выучено ${statistics.learnedCount} из ${statistics.totalCount} слов | ${statistics.percent}
             """.trimIndent()
-            botService.sendMessage(json, chatId, statText)
-        }
-        if (data == CALLBACK_LEARN_WORDS) {
-            checkNextQuestionAndSend(json,  trainer, botService, chatId)
-        }
-
-        if (data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) ?: continue) {
-            val index = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
-            if (trainer.checkAnswer(index)) {
-                botService.sendMessage(json, chatId, "Правильно!")
-            } else {
-                botService.sendMessage(
-                    json,
-                    chatId,
-                    "Неправильно! ${trainer.question?.correctAnswer?.original} это ${trainer.question?.correctAnswer?.translation}"
-                )
-            }
-            checkNextQuestionAndSend(json, trainer, botService, chatId)
-        }
+        botService.sendMessage(json, chatId, statText)
     }
+
+    if (data == CALLBACK_RESET_PROGRESS) {
+        trainer.resetProgress()
+        botService.sendMessage(json, chatId, "Прогресс сброшен")
+    }
+
+    if (data == CALLBACK_LEARN_WORDS) {
+        checkNextQuestionAndSend(json, trainer, botService, chatId)
+    }
+
+    if (data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) ?: return) {
+        val index = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
+        if (trainer.checkAnswer(index)) {
+            botService.sendMessage(json, chatId, "Правильно!")
+        } else {
+            botService.sendMessage(
+                json,
+                chatId,
+                "Неправильно! ${trainer.question?.correctAnswer?.original} это ${trainer.question?.correctAnswer?.translation}"
+            )
+        }
+        checkNextQuestionAndSend(json, trainer, botService, chatId)
+    }
+
 }
 
 fun checkNextQuestionAndSend(
