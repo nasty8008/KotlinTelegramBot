@@ -146,6 +146,19 @@ fun main(args: Array<String>) {
         if (data == CALLBACK_LEARN_WORDS) {
             checkNextQuestionAndSend(trainer, botService, chatId)
         }
+
+        if (data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) ?: continue) {
+            val index = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
+            if (trainer.checkAnswer(index)) {
+                botService.sendMessage(chatId, "Правильно!")
+            } else {
+                botService.sendMessage(
+                    chatId,
+                    "Неправильно! ${trainer.question?.correctAnswer?.original} это ${trainer.question?.correctAnswer?.translation}"
+                )
+            }
+            checkNextQuestionAndSend(trainer, botService, chatId)
+        }
     }
 }
 
