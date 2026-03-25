@@ -69,10 +69,12 @@ class LearnWordsTrainerTest {
 
         val correctIndex = question.variants.indexOf(question.correctAnswer)
 
+        val before = question.correctAnswer.correctAnswersCount
+
         val result = trainer.checkAnswer(correctIndex)
 
         assertTrue(result)
-        assertEquals(1, question.correctAnswer.correctAnswersCount)
+        assertEquals(before + 1, question.correctAnswer.correctAnswersCount)
     }
 
     @Test
@@ -83,17 +85,18 @@ class LearnWordsTrainerTest {
         assertNotNull(question)
 
         val correctIndex = question.variants.indexOf(question.correctAnswer)
-
         val wrongIndex = question.variants.indices.first { it != correctIndex }
+
+        val before = question.correctAnswer.correctAnswersCount
 
         val result = trainer.checkAnswer(wrongIndex)
 
         assertFalse(result)
-        assertEquals(0, question.correctAnswer.correctAnswersCount)
+        assertEquals(before, question.correctAnswer.correctAnswersCount)
     }
 
     @Test
-        fun `test resetProgress() with 2 words in dictionary`() {
+    fun `test resetProgress() with 2 words in dictionary`() {
         val trainer = LearnWordsTrainer("src/test/reset_test.txt")
 
         val statsBefore = trainer.getStatistics()
