@@ -7,8 +7,11 @@ import java.net.http.HttpResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
+import java.io.InputStream
 
 const val TELEGRAM_BASE_URL = "https://api.telegram.org/bot"
+const val BOT_FILE_URL = "https://api.telegram.org/file/bot"
 const val CALLBACK_LEARN_WORDS = "learn_words_clicked"
 const val CALLBACK_STATISTICS = "statistics_clicked"
 const val CALLBACK_RESET_PROGRESS = "reset_progress_clicked"
@@ -31,11 +34,27 @@ data class Response(
 )
 
 @Serializable
+data class Document(
+    @SerialName("file_name")
+    val fileName: String,
+    @SerialName("mime_type")
+    val mimeType: String,
+    @SerialName("file_id")
+    val fileId: String,
+    @SerialName("file_unique_id")
+    val fileUniqueId: String,
+    @SerialName("file_size")
+    val fileSize: Long,
+)
+
+@Serializable
 data class Message(
     @SerialName("text")
-    val text: String,
+    val text: String? = null,
     @SerialName("chat")
     val chat: Chat,
+    @SerialName("document")
+    val document: Document? = null,
 )
 
 @Serializable
@@ -60,6 +79,32 @@ data class SendMessageRequest(
     val text: String,
     @SerialName("reply_markup")
     val replyMarkup: ReplyMarkup? = null,
+)
+
+@Serializable
+data class GetFileRequest(
+    @SerialName("file_id")
+    val fileId: String
+)
+
+@Serializable
+data class GetFileResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: TelegramFile? = null,
+)
+
+@Serializable
+data class TelegramFile(
+    @SerialName("file_id")
+    val fileId: String,
+    @SerialName("file_unique_id")
+    val fileUniqueId: String,
+    @SerialName("file_size")
+    val fileSize: Long,
+    @SerialName("file_path")
+    val filePath: String,
 )
 
 @Serializable
@@ -169,6 +214,41 @@ class TelegramBotService(private val botToken: String) {
 
         return responseSendQuestion.body()
     }
+
+    fun getFile(fileId: String, json: Json): String {
+        val urlGetFile = "$TELEGRAM_BASE_URL$botToken/getFile"
+        val requestBody = GetFileRequest(fileId = fileId)
+        val requestBodyString = json.encodeToString(requestBody)
+        val client: HttpClient = HttpClient.newBuilder().build()
+        val request: HttpRequest = HttpRequest.newBuilder()
+            .uri(URI.create(urlGetFile))
+            .header("Content-type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
+            .build()
+        val response: HttpResponse<String> = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        )
+        return response.body()
+    }
+
+    fun downloadFile(filePath: String, fileName: String) {
+        val urlGetFile = "$BOT_FILE_URL$botToken/$filePath"
+        println(urlGetFile)
+        val request = HttpRequest
+            .newBuilder()
+            .uri(URI.create(urlGetFile))
+            .GET()
+            .build()
+
+        val response: HttpResponse<InputStream> = HttpClient
+            .newHttpClient()
+            .send(request, HttpResponse.BodyHandlers.ofInputStream())
+
+        println("status code: " + response.statusCode())
+        val body: InputStream = response.body()
+        body.copyTo(File(fileName).outputStream(), 16 * 1024)
+    }
 }
 
 fun main(args: Array<String>) {
@@ -206,11 +286,27 @@ fun handleUpdate(
     val message = update.message?.text
     val chatId = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
     val data = update.callbackQuery?.data
+    val document = update.message?.document
 
     val trainer = trainers.getOrPut(chatId) { LearnWordsTrainer("$chatId.txt") }
 
     if (message == "/start") {
         botService.sendMenu(json, chatId)
+    }
+
+    if (document != null) {
+        val jsonResponse = botService.getFile(document.fileId, json)
+        val response: GetFileResponse = json.decodeFromString(jsonResponse)
+        response.result?.let {
+            val fileName = document.fileName
+            val localFile = File(fileName)
+
+            if (!localFile.exists()) {
+                botService.downloadFile(it.filePath, it.fileUniqueId)
+            }
+
+            trainer.loadWordsFromFile(localFile)
+        }
     }
 
     if (data == CALLBACK_STATISTICS) {
