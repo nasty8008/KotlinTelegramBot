@@ -246,8 +246,12 @@ class TelegramBotService(private val botToken: String) {
             .send(request, HttpResponse.BodyHandlers.ofInputStream())
 
         println("status code: " + response.statusCode())
-        val body: InputStream = response.body()
-        body.copyTo(File(fileName).outputStream(), 16 * 1024)
+
+        response.body().use { inputStream ->
+            File(fileName).outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream, 16 * 1024)
+            }
+        }
     }
 }
 
@@ -302,7 +306,7 @@ fun handleUpdate(
             val localFile = File(fileName)
 
             if (!localFile.exists()) {
-                botService.downloadFile(it.filePath, it.fileUniqueId)
+                botService.downloadFile(it.filePath, fileName)
             }
 
             trainer.loadWordsFromFile(localFile)
