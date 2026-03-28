@@ -302,7 +302,7 @@ fun handleUpdate(
         val jsonResponse = botService.getFile(document.fileId, json)
         val response: GetFileResponse = json.decodeFromString(jsonResponse)
         response.result?.let {
-            val fileName = document.fileName
+            val fileName = document.fileUniqueId
             val localFile = File(fileName)
 
             if (!localFile.exists()) {
