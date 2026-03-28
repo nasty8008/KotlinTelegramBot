@@ -40,9 +40,10 @@ class LearnWordsTrainer(
     fun getNextQuestion(): Question? {
         val notLearnedList = dictionary.filter { it.correctAnswersCount < learnedAnswersCount }
         if (notLearnedList.isEmpty()) return null
-        val questionWords: List<Word> =  if (notLearnedList.size < countOfQuestionWords) {
+        val questionWords: List<Word> = if (notLearnedList.size < countOfQuestionWords) {
             val learnedList = dictionary.filter { it.correctAnswersCount >= learnedAnswersCount }.shuffled()
-            notLearnedList.shuffled().take(countOfQuestionWords) + learnedList.take(countOfQuestionWords - notLearnedList.size)
+            notLearnedList.shuffled()
+                .take(countOfQuestionWords) + learnedList.take(countOfQuestionWords - notLearnedList.size)
         } else {
             notLearnedList.shuffled().take(countOfQuestionWords)
         }.shuffled()
@@ -96,6 +97,32 @@ class LearnWordsTrainer(
         dictionary.forEach {
             wordsFile.appendText("${it.original}|${it.translation}|${it.correctAnswersCount}\n")
         }
+    }
+
+    fun addWordsToDictionary(newWords: List<Word>) {
+        val existingWords = dictionary.map { it.original to it.translation }.toSet()
+
+        val filteredWords = newWords.filter {
+            (it.original to it.translation) !in existingWords
+        }
+
+        dictionary.addAll(filteredWords)
+        saveDictionary()
+    }
+
+    fun loadWordsFromFile(file: File) {
+        val words = file.readLines()
+            .filter { it.split("|").size >= 2 }
+            .map { line ->
+                val parts = line.split("|")
+                Word(
+                    original = parts[0],
+                    translation = parts[1],
+                    correctAnswersCount = parts.getOrNull(2)?.toIntOrNull() ?: 0
+                )
+            }
+
+        addWordsToDictionary(words)
     }
 
     fun resetProgress() {
