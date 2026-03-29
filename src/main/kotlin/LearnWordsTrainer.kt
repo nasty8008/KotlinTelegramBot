@@ -8,7 +8,8 @@ data class Word(
     val original: String,
     val translation: String,
     var correctAnswersCount: Int = 0,
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    var fileId: String? = null
 )
 
 data class Statistics(
@@ -82,7 +83,8 @@ class LearnWordsTrainer(
                     original = parts[0],
                     translation = parts[1],
                     correctAnswersCount = parts.getOrNull(2)?.toIntOrNull() ?: 0,
-                    imagePath = parts.getOrNull(3)
+                    imagePath = parts.getOrNull(3),
+                    fileId = parts.getOrNull(4)
                 )
                 dictionary.add(word)
             }
@@ -97,7 +99,7 @@ class LearnWordsTrainer(
         val wordsFile = File(fileName)
         wordsFile.writeText("")
         dictionary.forEach {
-            wordsFile.appendText("${it.original}|${it.translation}|${it.correctAnswersCount}|${it.imagePath ?: ""}\n")
+            wordsFile.appendText("${it.original}|${it.translation}|${it.correctAnswersCount}|${it.imagePath ?: ""}|${it.fileId ?: ""}\n")
         }
     }
 

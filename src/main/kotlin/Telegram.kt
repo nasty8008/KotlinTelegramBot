@@ -60,6 +60,8 @@ data class Message(
     val chat: Chat,
     @SerialName("document")
     val document: Document? = null,
+    @SerialName("photo")
+    val photo: List<PhotoSize>? = null
 )
 
 @Serializable
@@ -124,6 +126,20 @@ data class InlineKeyboard(
     val text: String,
     @SerialName("callback_data")
     val callbackData: String,
+)
+
+@Serializable
+data class PhotoSize(
+    @SerialName("file_id")
+    val fileId: String
+)
+
+@Serializable
+data class SendPhotoResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: Message
 )
 
 class TelegramBotService(private val botToken: String) {
@@ -259,7 +275,7 @@ class TelegramBotService(private val botToken: String) {
         }
     }
 
-    fun sendPhoto(file: File, chatId: Long, hasSpoiler: Boolean = true): String {
+    fun sendPhoto(file: File, chatId: Long, json: Json, hasSpoiler: Boolean = true): String? {
         val data: MutableMap<String, Any> = LinkedHashMap()
         data["chat_id"] = chatId.toString()
         data["photo"] = file
@@ -270,7 +286,25 @@ class TelegramBotService(private val botToken: String) {
             .uri(URI.create("$TELEGRAM_BASE_URL$botToken/sendPhoto"))
             .postMultipartFormData(boundary, data)
             .build()
-        val client: HttpClient = HttpClient.newBuilder().build()
+
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        val parsed = json.decodeFromString<SendPhotoResponse>(response.body())
+
+        return parsed.result.photo?.lastOrNull()?.fileId
+    }
+
+    fun sendPhotoByFileId(chatId: Long, fileId: String, hasSpoiler: Boolean = true): String {
+        val data: MutableMap<String, Any> = LinkedHashMap()
+        data["chat_id"] = chatId.toString()
+        data["photo"] = fileId
+        data["has_spoiler"] = hasSpoiler
+        val boundary: String = BigInteger(35, Random()).toString()
+
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$TELEGRAM_BASE_URL$botToken/sendPhoto"))
+            .postMultipartFormData(boundary, data)
+            .build()
+
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
         return response.body()
     }
@@ -412,12 +446,17 @@ fun checkNextQuestionAndSend(
         return
     }
 
-    val imagePath = question.correctAnswer.imagePath
+    if (!question.correctAnswer.fileId.isNullOrEmpty()) {
+        telegramBotService.sendPhotoByFileId(chatId, question.correctAnswer.fileId!!)
+    } else {
+        val imagePath = question.correctAnswer.imagePath
 
-    if (imagePath != null) {
-        val file = File(imagePath)
-        if (file.exists()) {
-            telegramBotService.sendPhoto(file, chatId)
+        if (imagePath != null) {
+            val file = File(imagePath)
+            if (file.exists()) {
+                val fileId = telegramBotService.sendPhoto(file, chatId, json)
+                question.correctAnswer.fileId = fileId
+            }
         }
     }
 
