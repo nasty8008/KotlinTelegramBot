@@ -1,5 +1,5 @@
-hello|привет|0
-dog|собака|0
-cat|кошка|0
-thank you|спасибо|0
+hello|привет|0|hello.jpg
+dog|собака|0|dog.jpg
+cat|кошка|0|cat.jpg
+thank you|спасибо|0|thank_you.jpg
 hat|шляпа|0
