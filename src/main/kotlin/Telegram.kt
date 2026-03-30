@@ -447,7 +447,7 @@ fun checkNextQuestionAndSend(
     }
 
     if (!question.correctAnswer.fileId.isNullOrEmpty()) {
-        telegramBotService.sendPhotoByFileId(chatId, question.correctAnswer.fileId!!)
+        telegramBotService.sendPhotoByFileId(chatId, question.correctAnswer.fileId ?: return)
     } else {
         val imagePath = question.correctAnswer.imagePath
 
