@@ -54,6 +54,8 @@ data class Document(
 
 @Serializable
 data class Message(
+    @SerialName("message_id")
+    val messageId: Long? = null,
     @SerialName("text")
     val text: String? = null,
     @SerialName("chat")
@@ -142,6 +144,34 @@ data class SendPhotoResponse(
     val result: Message
 )
 
+@Serializable
+data class SendMessageApiResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: Message? = null,
+)
+
+@Serializable
+data class EditMessageTextRequest(
+    @SerialName("chat_id")
+    val chatId: Long,
+    @SerialName("message_id")
+    val messageId: Long,
+    @SerialName("text")
+    val text: String,
+)
+
+class DynamicMessage {
+    private val messageIdByChatId = mutableMapOf<Long, Long>()
+
+    fun setMessageId(chatId: Long, messageId: Long) {
+        messageIdByChatId[chatId] = messageId
+    }
+
+    fun getMessageId(chatId: Long): Long? = messageIdByChatId[chatId]
+}
+
 class TelegramBotService(private val botToken: String) {
     val client: HttpClient = HttpClient.newBuilder().build()
 
@@ -172,6 +202,23 @@ class TelegramBotService(private val botToken: String) {
             client.send(requestSendMessage, HttpResponse.BodyHandlers.ofString())
 
         return responseSendMessage.body()
+    }
+
+    fun editMessage(json: Json, chatId: Long, messageId: Long, text: String): String {
+        val url = "$TELEGRAM_BASE_URL$botToken/editMessageText"
+        val requestBody = EditMessageTextRequest(
+            chatId = chatId,
+            messageId = messageId,
+            text = text,
+        )
+        val requestBodyString = json.encodeToString(requestBody)
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Content-type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
+            .build()
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        return response.body()
     }
 
     fun sendMenu(json: Json, chatId: Long): String {
@@ -347,6 +394,7 @@ fun main(args: Array<String>) {
 
     val botService = TelegramBotService(botToken)
     val trainers = HashMap<Long, LearnWordsTrainer>()
+    val statisticsMessages = DynamicMessage()
 
     val json = Json {
         ignoreUnknownKeys = true
@@ -360,16 +408,30 @@ fun main(args: Array<String>) {
         val response: Response = json.decodeFromString(responseString)
         if (response.result.isEmpty()) continue
         val sortedUpdates = response.result.sortedBy { it.updateId }
-        sortedUpdates.forEach { handleUpdate(it, json, botService, trainers) }
+        sortedUpdates.forEach { handleUpdate(it, json, botService, trainers, statisticsMessages) }
         lastUpdateId = sortedUpdates.last().updateId + 1
     }
+}
+
+fun formatStatisticsText(trainer: LearnWordsTrainer): String {
+    val statistics = trainer.getStatistics()
+    val percent = if (statistics.totalCount == 0) 0 else 100 * statistics.learnedCount / statistics.totalCount
+    val bar = "█".repeat(percent / 10) + "▒".repeat(10 - percent / 10)
+    return """
+                Всего слов в словаре: ${statistics.totalCount}
+                Выучено слов: ${statistics.learnedCount}
+                Выучено ${statistics.learnedCount} из ${statistics.totalCount} слов | ${statistics.percent}
+                Прогресс изучения: $percent%
+                [$bar]
+            """.trimIndent()
 }
 
 fun handleUpdate(
     update: Update,
     json: Json,
     botService: TelegramBotService,
-    trainers: HashMap<Long, LearnWordsTrainer>
+    trainers: HashMap<Long, LearnWordsTrainer>,
+    statisticsMessages: DynamicMessage,
 ) {
 
     val message = update.message?.text
@@ -399,13 +461,12 @@ fun handleUpdate(
     }
 
     if (data == CALLBACK_STATISTICS) {
-        val statistics = trainer.getStatistics()
-        val statText = """
-                Всего слов в словаре: ${statistics.totalCount}
-                Выучено слов: ${statistics.learnedCount}
-                Выучено ${statistics.learnedCount} из ${statistics.totalCount} слов | ${statistics.percent}
-            """.trimIndent()
-        botService.sendMessage(json, chatId, statText)
+        val statText = formatStatisticsText(trainer)
+        val responseBody = botService.sendMessage(json, chatId, statText)
+        val parsed = runCatching { json.decodeFromString<SendMessageApiResponse>(responseBody) }.getOrNull()
+        if (parsed?.ok == true) {
+            parsed.result?.messageId?.let { statisticsMessages.setMessageId(chatId, it) }
+        }
     }
 
     if (data == CALLBACK_RESET_PROGRESS) {
@@ -421,6 +482,9 @@ fun handleUpdate(
         val index = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
         if (trainer.checkAnswer(index)) {
             botService.sendMessage(json, chatId, "Правильно!")
+            statisticsMessages.getMessageId(chatId)?.let { messageId ->
+                botService.editMessage(json, chatId, messageId, formatStatisticsText(trainer))
+            }
         } else {
             botService.sendMessage(
                 json,
