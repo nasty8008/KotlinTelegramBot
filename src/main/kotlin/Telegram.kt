@@ -145,7 +145,7 @@ data class SendPhotoResponse(
 )
 
 @Serializable
-data class SendMessageApiResponse(
+data class SendMessageResponse(
     @SerialName("ok")
     val ok: Boolean,
     @SerialName("result")
@@ -204,21 +204,40 @@ class TelegramBotService(private val botToken: String) {
         return responseSendMessage.body()
     }
 
-    fun editMessage(json: Json, chatId: Long, messageId: Long, text: String): String {
-        val url = "$TELEGRAM_BASE_URL$botToken/editMessageText"
-        val requestBody = EditMessageTextRequest(
-            chatId = chatId,
-            messageId = messageId,
-            text = text,
-        )
-        val requestBodyString = json.encodeToString(requestBody)
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Content-type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        return response.body()
+    fun editMessage(json: Json, chatId: Long, messageId: Long, text: String): Boolean {
+        return try {
+            val url = "$TELEGRAM_BASE_URL$botToken/editMessageText"
+            val requestBody = EditMessageTextRequest(
+                chatId = chatId,
+                messageId = messageId,
+                text = text,
+            )
+            val requestBodyString = json.encodeToString(requestBody)
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            val jsonResponse = Json.decodeFromString<SendMessageResponse>(response.body())
+            jsonResponse.ok
+        } catch (e: Exception) {
+            when {
+                e.message?.contains("MESSAGE_NOT_MODIFIED") == true -> {
+                    println("Текст не изменился")
+                    true
+                }
+                e.message?.contains("MESSAGE_EDIT_TIME_EXPIRED") == true -> {
+                    println("Время редактирования истекло")
+                    false
+                }
+                else -> {
+                    println("Ошибка редактирования: ${e.message}")
+                    false
+                }
+            }
+        }
     }
 
     fun sendMenu(json: Json, chatId: Long): String {
@@ -419,7 +438,6 @@ fun formatStatisticsText(trainer: LearnWordsTrainer): String {
     val bar = "█".repeat(percent / 10) + "▒".repeat(10 - percent / 10)
     return """
                 Всего слов в словаре: ${statistics.totalCount}
-                Выучено слов: ${statistics.learnedCount}
                 Выучено ${statistics.learnedCount} из ${statistics.totalCount} слов | ${statistics.percent}
                 Прогресс изучения: $percent%
                 [$bar]
@@ -463,7 +481,7 @@ fun handleUpdate(
     if (data == CALLBACK_STATISTICS) {
         val statText = formatStatisticsText(trainer)
         val responseBody = botService.sendMessage(json, chatId, statText)
-        val parsed = runCatching { json.decodeFromString<SendMessageApiResponse>(responseBody) }.getOrNull()
+        val parsed = runCatching { json.decodeFromString<SendMessageResponse>(responseBody) }.getOrNull()
         if (parsed?.ok == true) {
             parsed.result?.messageId?.let { statisticsMessages.setMessageId(chatId, it) }
         }
