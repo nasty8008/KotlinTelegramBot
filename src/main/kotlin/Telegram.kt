@@ -220,7 +220,7 @@ class TelegramBotService(private val botToken: String) {
                 .build()
 
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            val jsonResponse = Json.decodeFromString<SendMessageResponse>(response.body())
+            val jsonResponse = json.decodeFromString<SendMessageResponse>(response.body())
             jsonResponse.ok
         } catch (e: Exception) {
             when {
